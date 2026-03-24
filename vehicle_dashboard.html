@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>社用車管理ダッシュボード</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, sans-serif; background: #f2f2f7; color: #1c1c1e; }
+
+        header {
+            background: linear-gradient(135deg, #1c1c1e 0%, #2c2c2e 100%);
+            color: white;
+            padding: 20px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+        }
+        header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+        header span { font-size: 12px; opacity: 0.5; }
+
+        .search-bar {
+            padding: 16px 24px 0;
+        }
+        .search-bar input {
+            width: 100%;
+            padding: 10px 16px 10px 40px;
+            border: none;
+            border-radius: 12px;
+            background: white;
+            font-size: 14px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            outline: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23aaa' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: 12px center;
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            padding: 16px 24px;
+        }
+        .summary-card {
+            background: white;
+            border-radius: 14px;
+            padding: 16px;
+            text-align: center;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .summary-card .number { font-size: 28px; font-weight: 800; line-height: 1; }
+        .summary-card .label { font-size: 11px; color: #8e8e93; margin-top: 4px; }
+
+        .section { padding: 0 24px 24px; }
+        .section h2 { font-size: 15px; font-weight: 700; margin-bottom: 10px; padding-top: 4px; color: #3a3a3c; }
+
+        table { width: 100%; background: white; border-radius: 14px; overflow: hidden; border-collapse: collapse; font-size: 13px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        th { background: #f9f9f9; padding: 10px 14px; text-align: left; font-weight: 600; color: #8e8e93; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; }
+        td { padding: 11px 14px; border-top: 1px solid #f2f2f7; }
+        tr.clickable { cursor: pointer; transition: background 0.15s; }
+        tr.clickable:hover td { background: #f9f9fb; }
+
+        .badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+        .badge-red { background: #fff0f0; color: #ff3b30; }
+        .badge-orange { background: #fff8f0; color: #ff9500; }
+        .badge-green { background: #f0fff4; color: #30d158; }
+        .badge-blue { background: #f0f4ff; color: #007aff; }
+
+        .red { color: #ff3b30; } .orange { color: #ff9500; } .green { color: #30d158; } .blue { color: #007aff; }
+
+        /* モーダル */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 560px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideUp 0.25s ease;
+        }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal-header {
+            padding: 20px 20px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .modal-header h2 { font-size: 20px; font-weight: 700; }
+        .modal-header .close-btn {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: #f2f2f7;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            color: #8e8e93;
+        }
+        .modal-body { padding: 16px 20px 24px; }
+        .modal-section { margin-bottom: 20px; }
+        .modal-section h3 { font-size: 13px; font-weight: 600; color: #8e8e93; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 10px; }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .detail-item { background: #f9f9fb; border-radius: 10px; padding: 10px 12px; }
+        .detail-item .d-label { font-size: 11px; color: #8e8e93; margin-bottom: 2px; }
+        .detail-item .d-value { font-size: 14px; font-weight: 600; }
+        .status-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f2f2f7; }
+        .status-row:last-child { border-bottom: none; }
+        .status-bar { height: 6px; border-radius: 3px; background: #f2f2f7; margin-top: 8px; }
+        .status-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+
+        .no-warning { padding: 16px; color: #30d158; background: white; border-radius: 14px; font-weight: 600; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        .loading { text-align: center; padding: 40px; color: #8e8e93; }
+
+        @media (max-width: 600px) {
+            .summary { grid-template-columns: repeat(2, 1fr); }
+            table { font-size: 12px; }
+            th, td { padding: 8px 10px; }
+            .detail-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>社用車管理ダッシュボード</h1>
+    <span id="last-updated">読み込み中...</span>
+</header>
+
+<div class="search-bar">
+    <input type="text" id="search-input" placeholder="車両名・ナンバーで検索..." oninput="filterVehicles()">
+</div>
+
+<div class="summary">
+    <div class="summary-card"><div class="number blue" id="total-count">-</div><div class="label">総台数</div></div>
+    <div class="summary-card"><div class="number red" id="warning-count">-</div><div class="label">要確認</div></div>
+    <div class="summary-card"><div class="number orange" id="inspection-soon">-</div><div class="label">車検30日以内</div></div>
+    <div class="summary-card"><div class="number orange" id="oil-soon">-</div><div class="label">オイル500km以内</div></div>
+</div>
+
+<div class="section" id="warning-section">
+    <h2>⚠️ 要確認車両</h2>
+    <div id="warning-table" class="loading">読み込み中...</div>
+</div>
+
+<div class="section">
+    <h2>車両一覧（全台）</h2>
+    <div id="vehicle-table" class="loading">読み込み中...</div>
+</div>
+
+<div class="section">
+    <h2>車検・オイル交換 期限一覧</h2>
+    <div id="maintenance-table" class="loading">読み込み中...</div>
+</div>
+
+<div class="section">
+    <h2>メンテナンス履歴</h2>
+    <div id="history-table" class="loading">読み込み中...</div>
+</div>
+
+<!-- 詳細モーダル -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+    <div class="modal" id="modal-content"></div>
+</div>
+
+<script>
+    const SUPABASE_URL = 'https://rcyxoolfdzbwnvaaufql.supabase.co'
+    const SUPABASE_KEY = 'sb_publishable_EzilrK-vbmIBcWzt5m6_-A_y0RpVqeo'
+
+    let allVehicles = []
+    let allMaintenance = []
+
+    async function fetchData(table, query = '') {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+        })
+        return res.json()
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return '-'
+        const d = new Date(dateStr)
+        return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`
+    }
+
+    function daysUntil(dateStr) {
+        if (!dateStr) return 9999
+        return Math.floor((new Date(dateStr) - new Date()) / 86400000)
+    }
+
+    function statusBadge(v) {
+        const inspDays = daysUntil(v.inspection_due_date)
+        const oilLeft = (v.last_oil_change_mileage + v.oil_change_cycle) - v.current_mileage
+        if (!v.warning_light_off || v.front_tire_depth < 3 || v.rear_tire_depth < 3)
+            return '<span class="badge badge-red">要修理</span>'
+        if (inspDays < 30 || oilLeft < 500)
+            return '<span class="badge badge-orange">要確認</span>'
+        return '<span class="badge badge-green">正常</span>'
+    }
+
+    function buildVehicleTable(vehicles) {
+        if (vehicles.length === 0) return '<p style="padding:16px;text-align:center;color:#8e8e93;background:white;border-radius:14px;">該当する車両がありません</p>'
+        let html = '<table><thead><tr><th>状態</th><th>車両名</th><th>ナンバー</th><th>走行距離</th><th>タイヤ溝</th><th>警告灯</th></tr></thead><tbody>'
+        vehicles.forEach(v => {
+            const tireColor = (v.front_tire_depth < 3 || v.rear_tire_depth < 3) ? 'red' : (v.front_tire_depth < 5 || v.rear_tire_depth < 5) ? 'orange' : 'green'
+            html += `<tr class="clickable" onclick="showDetail('${v.id}')">
+                <td>${statusBadge(v)}</td>
+                <td><strong>${v.vehicle_name}</strong></td>
+                <td>${v.plate_number}</td>
+                <td>${v.current_mileage.toLocaleString()}km</td>
+                <td><span class="${tireColor}">${v.front_tire_depth}/${v.rear_tire_depth}mm</span></td>
+                <td>${v.warning_light_off ? '<span class="badge badge-green">正常</span>' : '<span class="badge badge-red">点灯</span>'}</td>
+            </tr>`
+        })
+        return html + '</tbody></table>'
+    }
+
+    function filterVehicles() {
+        const q = document.getElementById('search-input').value.toLowerCase()
+        const filtered = allVehicles.filter(v =>
+            v.vehicle_name.toLowerCase().includes(q) ||
+            v.plate_number.toLowerCase().includes(q)
+        )
+        document.getElementById('vehicle-table').innerHTML = buildVehicleTable(filtered)
+    }
+
+ function showDetail(vehicleId) {
+        const v = allVehicles.find(v => v.id === vehicleId)
+        if (!v) return
+
+        const inspDays = daysUntil(v.inspection_due_date)
+        const baseMileage = Math.min(v.last_oil_change_mileage, v.current_mileage)
+        const oilLeft = (baseMileage + v.oil_change_cycle) - v.current_mileage
+        const inspColor = inspDays < 7 ? '#ff3b30' : inspDays < 30 ? '#ff9500' : '#30d158'
+        const oilColor = oilLeft < 500 ? '#ff3b30' : oilLeft < 1000 ? '#ff9500' : '#30d158'
+        const statusColor = (!v.warning_light_off || v.front_tire_depth < 3 || v.rear_tire_depth < 3) ? '#ff3b30' :
+                           (inspDays < 30 || oilLeft < 500) ? '#ff9500' : '#30d158'
+        const statusLabel = (!v.warning_light_off || v.front_tire_depth < 3 || v.rear_tire_depth < 3) ? '要修理' :
+                           (inspDays < 30 || oilLeft < 500) ? '要確認' : '正常'
+
+        const records = allMaintenance.filter(m => m.vehicle_id === vehicleId).slice(0, 5)
+        let histHtml = records.length === 0 ? '<p style="color:#8e8e93;font-size:13px;padding:8px 0;">記録なし</p>' : ''
+        records.forEach(m => {
+            histHtml += `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f2f2f7;">
+                    <div>
+                        <div style="font-size:14px;font-weight:600;">${m.maintenance_type}</div>
+                        <div style="font-size:12px;color:#8e8e93;margin-top:2px;">${m.shop || '-'}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:13px;color:#3a3a3c;">${formatDate(m.date)}</div>
+                        <div style="font-size:12px;color:#8e8e93;">${m.mileage_at_time.toLocaleString()}km</div>
+                    </div>
+                </div>`
+        })
+
+        document.getElementById('modal-content').innerHTML = `
+            <div style="height:6px;background:${statusColor};border-radius:20px 20px 0 0;"></div>
+            <div class="modal-header" style="padding:20px 20px 12px;">
+                <div style="flex:1;">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+                        <h2 style="font-size:22px;">${v.vehicle_name}</h2>
+                        <span style="background:${statusColor}22;color:${statusColor};font-size:12px;font-weight:700;padding:3px 10px;border-radius:8px;">${statusLabel}</span>
+                    </div>
+                    <p style="color:#8e8e93;font-size:13px;">${v.plate_number}　${v.make || ''} ${v.model_name || ''}　${v.year || ''}年式</p>
+                </div>
+                <button class="close-btn" onclick="closeModalBtn()">✕</button>
+            </div>
+            <div class="modal-body" style="padding:0 20px 24px;">
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+                    <div style="background:#f9f9fb;border-radius:14px;padding:14px;">
+                        <div style="font-size:11px;color:#8e8e93;margin-bottom:4px;">走行距離</div>
+                        <div style="font-size:20px;font-weight:800;color:#007aff;">${v.current_mileage.toLocaleString()}<span style="font-size:13px;font-weight:500;"> km</span></div>
+                    </div>
+                    <div style="background:#f9f9fb;border-radius:14px;padding:14px;">
+                        <div style="font-size:11px;color:#8e8e93;margin-bottom:4px;">タイヤ種別</div>
+                        <div style="font-size:16px;font-weight:700;">${v.current_tire_type || '-'}</div>
+                    </div>
+                    <div style="background:#f9f9fb;border-radius:14px;padding:14px;">
+                        <div style="font-size:11px;color:#8e8e93;margin-bottom:4px;">車検期限</div>
+                        <div style="font-size:16px;font-weight:700;color:${inspColor};">${formatDate(v.inspection_due_date)}</div>
+                        <div style="font-size:12px;color:${inspColor};">残り${inspDays}日</div>
+                    </div>
+                    <div style="background:#f9f9fb;border-radius:14px;padding:14px;">
+                        <div style="font-size:11px;color:#8e8e93;margin-bottom:4px;">オイル交換まで</div>
+                        <div style="font-size:20px;font-weight:800;color:${oilColor};">${Math.max(0,oilLeft).toLocaleString()}<span style="font-size:13px;font-weight:500;"> km</span></div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    <div style="font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">タイヤ溝</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                        <div style="background:#f9f9fb;border-radius:14px;padding:14px;">
+                            <div style="font-size:11px;color:#8e8e93;margin-bottom:6px;">フロント</div>
+                            <div style="font-size:20px;font-weight:800;color:${v.front_tire_depth < 3 ? '#ff3b30' : v.front_tire_depth < 5 ? '#ff9500' : '#30d158'};">${v.front_tire_depth}<span style="font-size:13px;font-weight:500;">mm</span></div>
+                            <div style="height:6px;background:#e5e5ea;border-radius:3px;margin-top:8px;">
+                                <div style="height:100%;width:${Math.min(v.front_tire_depth/10*100,100)}%;background:${v.front_tire_depth < 3 ? '#ff3b30' : v.front_tire_depth < 5 ? '#ff9500' : '#30d158'};border-radius:3px;transition:width 0.5s;"></div>
+                            </div>
+                        </div>
+                        <div style="background:#f9f9fb;border-radius:14px;padding:14px;">
+                            <div style="font-size:11px;color:#8e8e93;margin-bottom:6px;">リア</div>
+                            <div style="font-size:20px;font-weight:800;color:${v.rear_tire_depth < 3 ? '#ff3b30' : v.rear_tire_depth < 5 ? '#ff9500' : '#30d158'};">${v.rear_tire_depth}<span style="font-size:13px;font-weight:500;">mm</span></div>
+                            <div style="height:6px;background:#e5e5ea;border-radius:3px;margin-top:8px;">
+                                <div style="height:100%;width:${Math.min(v.rear_tire_depth/10*100,100)}%;background:${v.rear_tire_depth < 3 ? '#ff3b30' : v.rear_tire_depth < 5 ? '#ff9500' : '#30d158'};border-radius:3px;transition:width 0.5s;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    <div style="font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">車両状態</div>
+                    <div style="background:#f9f9fb;border-radius:14px;padding:4px 14px;">
+                        ${[
+                            ['警告灯', v.warning_light_off, '正常', '点灯'],
+                            ['車体の傷', v.no_body_damage, 'なし', 'あり'],
+                            ['サイドミラー', v.side_mirror_ok, '正常', '要調整'],
+                            ['ワイパー', v.wiper_ok, '正常', '要交換'],
+                            ['灯火類', v.lights_ok, '正常', '要確認']
+                        ].map(([label, ok, okText, ngText]) => `
+                            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #ebebf0;">
+                                <span style="font-size:14px;">${label}</span>
+                                <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:8px;background:${ok ? '#f0fff4' : '#fff0f0'};color:${ok ? '#30d158' : '#ff3b30'};">${ok ? okText : ngText}</span>
+                            </div>`).join('')}
+                        <div style="padding:10px 0;">
+                            <span style="font-size:14px;">走行距離</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div style="font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">メンテナンス履歴</div>
+                    <div style="background:#f9f9fb;border-radius:14px;padding:4px 14px;">
+                        ${histHtml || '<p style="color:#8e8e93;font-size:13px;padding:10px 0;">記録なし</p>'}
+                    </div>
+                </div>
+
+                ${v.notes ? `
+                <div style="margin-top:20px;">
+                    <div style="font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">メモ</div>
+                    <div style="background:#f9f9fb;border-radius:14px;padding:14px;font-size:14px;color:#3a3a3c;">${v.notes}</div>
+                </div>` : ''}
+            </div>
+        `
+        document.getElementById('modal-overlay').classList.add('active')
+    }
+    function closeModal(e) {
+        if (e.target === document.getElementById('modal-overlay')) {
+            document.getElementById('modal-overlay').classList.remove('active')
+        }
+    }
+
+    function closeModalBtn() {
+        document.getElementById('modal-overlay').classList.remove('active')
+    }
+
+    async function loadDashboard() {
+        try {
+            allVehicles = await fetchData('vehicles', 'order=vehicle_name')
+            allMaintenance = await fetchData('maintenance_records', 'order=date.desc&limit=100')
+
+            const now = new Date()
+            let warningCount = 0, inspSoon = 0, oilSoon = 0
+
+            allVehicles.forEach(v => {
+                const inspDays = daysUntil(v.inspection_due_date)
+                const oilLeft = (v.last_oil_change_mileage + v.oil_change_cycle) - v.current_mileage
+                const hasIssue = !v.warning_light_off || v.front_tire_depth < 3 || v.rear_tire_depth < 3
+                if (hasIssue || inspDays < 30 || oilLeft < 500) warningCount++
+                if (inspDays < 30) inspSoon++
+                if (oilLeft < 500) oilSoon++
+            })
+
+            document.getElementById('total-count').textContent = allVehicles.length
+            document.getElementById('warning-count').textContent = warningCount
+            document.getElementById('inspection-soon').textContent = inspSoon
+            document.getElementById('oil-soon').textContent = oilSoon
+            document.getElementById('last-updated').textContent = `${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')} 更新`
+
+            const warningVehicles = allVehicles.filter(v => {
+                const inspDays = daysUntil(v.inspection_due_date)
+                const oilLeft = (v.last_oil_change_mileage + v.oil_change_cycle) - v.current_mileage
+                return !v.warning_light_off || v.front_tire_depth < 3 || v.rear_tire_depth < 3 || inspDays < 30 || oilLeft < 500
+            })
+
+            document.getElementById('warning-table').innerHTML = warningVehicles.length === 0
+                ? '<p class="no-warning">✅ 要確認車両はありません</p>'
+                : buildVehicleTable(warningVehicles)
+
+            document.getElementById('vehicle-table').innerHTML = buildVehicleTable(allVehicles)
+
+            const sortedByDeadline = [...allVehicles].sort((a, b) => daysUntil(a.inspection_due_date) - daysUntil(b.inspection_due_date))
+            let maintHtml = '<table><thead><tr><th>車両名</th><th>ナンバー</th><th>車検期限</th><th>残り日数</th><th>オイルまで</th></tr></thead><tbody>'
+            sortedByDeadline.forEach(v => {
+                const inspDays = daysUntil(v.inspection_due_date)
+                const oilLeft = (v.last_oil_change_mileage + v.oil_change_cycle) - v.current_mileage
+                const inspColor = inspDays < 7 ? 'red' : inspDays < 30 ? 'orange' : 'green'
+                const oilColor = oilLeft < 500 ? 'red' : oilLeft < 1000 ? 'orange' : 'green'
+                maintHtml += `<tr class="clickable" onclick="showDetail('${v.id}')">
+                    <td><strong>${v.vehicle_name}</strong></td>
+                    <td>${v.plate_number}</td>
+                    <td>${formatDate(v.inspection_due_date)}</td>
+                    <td><span class="${inspColor}">${inspDays}日</span></td>
+                    <td><span class="${oilColor}">${oilLeft.toLocaleString()}km</span></td>
+                </tr>`
+            })
+            document.getElementById('maintenance-table').innerHTML = maintHtml + '</tbody></table>'
+
+            const vehicleMap = {}
+            allVehicles.forEach(v => { vehicleMap[v.id] = v.vehicle_name })
+            let histHtml = '<table><thead><tr><th>日付</th><th>車両名</th><th>種類</th><th>走行距離</th><th>業者</th><th>費用</th></tr></thead><tbody>'
+            allMaintenance.forEach(m => {
+                histHtml += `<tr>
+                    <td>${formatDate(m.date)}</td>
+                    <td>${vehicleMap[m.vehicle_id] || '-'}</td>
+                    <td>${m.maintenance_type}</td>
+                    <td>${m.mileage_at_time.toLocaleString()}km</td>
+                    <td>${m.shop || '-'}</td>
+                    <td>${m.cost > 0 ? m.cost.toLocaleString()+'円' : '-'}</td>
+                </tr>`
+            })
+            document.getElementById('history-table').innerHTML = histHtml + '</tbody></table>'
+
+        } catch (error) {
+            console.error('エラー:', error)
+            document.getElementById('vehicle-table').innerHTML = '<p style="padding:16px;color:red;background:white;border-radius:14px;">データの取得に失敗しました。URLとAPIキーを確認してください。</p>'
+        }
+    }
+
+    loadDashboard()
+    setInterval(loadDashboard, 5 * 60 * 1000)
+</script>
+</body>
+</html>
