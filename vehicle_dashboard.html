@@ -284,8 +284,9 @@ function showDetail(vehicleId) {
         const statusLabel = (!v.warning_light_off || v.front_tire_depth < 3 || v.rear_tire_depth < 3) ? '要修理' :
                            (inspDays < 30 || oilLeft < 500) ? '要確認' : '正常'
 
-        const records = allMaintenance.filter(m => m.vehicle_id === vehicleId).slice(0, 5)
+const records = allMaintenance.filter(m => m.vehicle_id === vehicleId).slice(0, 5)
         const inspections = (Array.isArray(allInspections) ? allInspections : []).filter(i => i.vehicle_id === vehicleId).slice(0, 5)
+        const latestInsp = inspections.length > 0 ? inspections[0] : null
 
         let inspHtml = inspections.length === 0 ? '<p style="color:#8e8e93;font-size:13px;padding:8px 0;">記録なし</p>' : ''
         inspections.forEach(i => {
@@ -361,23 +362,28 @@ function showDetail(vehicleId) {
                     </div>
                 </div>
 
-                <div style="margin-bottom:20px;">
-                    <div style="font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">タイヤ溝</div>
+<div style="margin-bottom:20px;">
+                    <div style="font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">タイヤ溝・製造コード</div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                        <div style="background:#f9f9fb;border-radius:14px;padding:14px;">
-                            <div style="font-size:11px;color:#8e8e93;margin-bottom:6px;">フロント</div>
-                            <div style="font-size:20px;font-weight:800;color:${v.front_tire_depth < 3 ? '#ff3b30' : v.front_tire_depth < 5 ? '#ff9500' : '#30d158'};">${v.front_tire_depth}<span style="font-size:13px;font-weight:500;">mm</span></div>
-                            <div style="height:6px;background:#e5e5ea;border-radius:3px;margin-top:8px;">
-                                <div style="height:100%;width:${Math.min((v.front_tire_depth ?? 0) / 10 * 100, 100)}%;background:${v.front_tire_depth < 3 ? '#ff3b30' : v.front_tire_depth < 5 ? '#ff9500' : '#30d158'};border-radius:3px;transition:width 0.5s;"></div>
-                            </div>
-                        </div>
-                        <div style="background:#f9f9fb;border-radius:14px;padding:14px;">
-                            <div style="font-size:11px;color:#8e8e93;margin-bottom:6px;">リア</div>
-                            <div style="font-size:20px;font-weight:800;color:${v.rear_tire_depth < 3 ? '#ff3b30' : v.rear_tire_depth < 5 ? '#ff9500' : '#30d158'};">${v.rear_tire_depth}<span style="font-size:13px;font-weight:500;">mm</span></div>
-                            <div style="height:6px;background:#e5e5ea;border-radius:3px;margin-top:8px;">
-                                <div style="height:100%;width:${Math.min((v.rear_tire_depth ?? 0) / 10 * 100, 100)}%;background:${v.rear_tire_depth < 3 ? '#ff3b30' : v.rear_tire_depth < 5 ? '#ff9500' : '#30d158'};border-radius:3px;transition:width 0.5s;"></div>
-                            </div>
-                        </div>
+                        ${[
+                            ['前右', latestInsp ? latestInsp.tire_fr : v.front_tire_depth, latestInsp ? latestInsp.code_fr : ''],
+                            ['前左', latestInsp ? latestInsp.tire_fl : v.front_tire_depth, latestInsp ? latestInsp.code_fl : ''],
+                            ['後右', latestInsp ? latestInsp.tire_rr : v.rear_tire_depth,  latestInsp ? latestInsp.code_rr : ''],
+                            ['後左', latestInsp ? latestInsp.tire_rl : v.rear_tire_depth,  latestInsp ? latestInsp.code_rl : ''],
+                        ].map(([label, depth, code]) => {
+                            const d = depth ?? 0
+                            const color = d < 3 ? '#ff3b30' : d < 5 ? '#ff9500' : '#30d158'
+                            const mfgInfo = parseTireCode(code)
+                            return `<div style="background:#f9f9fb;border-radius:14px;padding:14px;">
+                                <div style="font-size:11px;color:#8e8e93;margin-bottom:6px;">${label}</div>
+                                <div style="font-size:20px;font-weight:800;color:${color};">${d}<span style="font-size:13px;font-weight:500;">mm</span></div>
+                                <div style="height:6px;background:#e5e5ea;border-radius:3px;margin-top:6px;">
+                                    <div style="height:100%;width:${Math.min(d/10*100,100)}%;background:${color};border-radius:3px;"></div>
+                                </div>
+                                ${code ? `<div style="font-size:11px;color:#8e8e93;margin-top:6px;">コード: <span style="color:#3a3a3c;font-weight:600;">${code}</span></div>` : ''}
+                                ${mfgInfo ? `<div style="font-size:11px;color:#007aff;margin-top:2px;">${mfgInfo}</div>` : ''}
+                            </div>`
+                        }).join('')}
                     </div>
                 </div>
 
@@ -583,6 +589,14 @@ console.log('inspections count:', allInspections.length)
             </tr>`
         })
         document.getElementById('fuel-table').innerHTML = html + '</tbody></table>'
+    }
+
+function parseTireCode(code) {
+        if (!code || code.length !== 4) return null
+        const week = parseInt(code.substring(0, 2))
+        const year = parseInt(code.substring(2, 4))
+        if (isNaN(week) || isNaN(year) || week < 1 || week > 53) return null
+        return `${2000 + year}年${week}週製造`
     }
 
     loadDashboard()
