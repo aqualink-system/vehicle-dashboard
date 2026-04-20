@@ -285,7 +285,7 @@ function showDetail(vehicleId) {
                            (inspDays < 30 || oilLeft < 500) ? '要確認' : '正常'
 
 const records = allMaintenance.filter(m => m.vehicle_id === vehicleId).slice(0, 5)
-        const inspections = (Array.isArray(allInspections) ? allInspections : []).filter(i => i.vehicle_id === vehicleId).slice(0, 5)
+const inspections = (Array.isArray(allInspections) ? allInspections : []).filter(i => i.vehicle_id.toLowerCase() === vehicleId.toLowerCase()).slice(0, 5)
         const latestInsp = inspections.length > 0 ? inspections[0] : null
 
         let inspHtml = inspections.length === 0 ? '<p style="color:#8e8e93;font-size:13px;padding:8px 0;">記録なし</p>' : ''
