@@ -445,8 +445,8 @@ const inspections = (Array.isArray(allInspections) ? allInspections : []).filter
         try {
 allVehicles = await fetchData('vehicles', 'order=vehicle_name')
 allMaintenance = await fetchData('maintenance_records', 'order=date.desc&limit=100')
-allInspections = await fetchData('inspection_records', 'order=inspection_date.desc&limit=100')allFuelRecords = await fetchData('fuel_records', 'order=date.desc&limit=200')
-
+allInspections = await fetchData('inspection_records', 'order=inspection_date.desc&limit=100')
+allFuelRecords = await fetchData('fuel_records', 'order=date.desc&limit=200')
 console.log('vehicles count:', allVehicles.length)
 console.log('maintenance count:', allMaintenance.length)
 console.log('inspections count:', allInspections.length)
